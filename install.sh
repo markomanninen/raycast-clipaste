@@ -92,7 +92,7 @@ if command -v clipaste &> /dev/null || [[ -f "$CLIPASTE_PATH" ]]; then
     print_success "clipaste found"
 else
     print_warning "clipaste not found. Please install clipaste first."
-    print_status "You can install it from: https://github.com/markomanninen/cli-clipboard-paste"
+    print_status "You can install it from: https://github.com/markomanninen/clipaste"
     print_status "Or if you have the binary, copy it to: $CLIPASTE_PATH"
     read -p "Do you want to continue anyway? (y/N): " -n 1 -r
     echo

@@ -166,7 +166,7 @@ The install script automatically detects common installation paths:
 
 #### ❌ "clipaste: command not found"
 
-- Install clipaste: <https://github.com/markomanninen/cli-clipboard-paste>
+- Install clipaste: <https://github.com/markomanninen/clipaste>
 - Make sure the binary is in your PATH or set full path in preferences
 
 #### ❌ Image preview not working
@@ -232,9 +232,5 @@ MIT License - see LICENSE file for details.
 
 ## 🔗 Related Projects
 
-- [clipaste CLI](https://github.com/markomanninen/cli-clipboard-paste) - The core CLI tool
+- [clipaste CLI](https://github.com/markomanninen/clipaste) - The core CLI tool
 - [clipaste-randomizer](https://github.com/markomanninen/clipaste-randomizer) - Random data generation plugin
-
----
-
-**Happy clipboard management! 📋✨**

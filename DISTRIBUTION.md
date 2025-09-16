@@ -36,7 +36,7 @@ If the automated script doesn't work:
    ```
 
 2. **Install clipaste**
-   - Follow instructions at <https://github.com/markomanninen/cli-clipboard-paste>
+   - Follow instructions at <https://github.com/markomanninen/clipaste>
 
 3. **Set up extension**
 
