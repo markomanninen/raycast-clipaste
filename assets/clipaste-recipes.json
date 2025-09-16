@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "recipes": [
+    {
+      "id": "img-to-png",
+      "label": "Paste image \u2192 PNG to ~/Pictures/Clip",
+      "args": [
+        "paste",
+        "--format",
+        "png",
+        "--output",
+        "~/Pictures/Clip",
+        "--auto-extension"
+      ]
+    },
+    {
+      "id": "text-to-md",
+      "label": "Paste text \u2192 Markdown in ~/Documents/Notes",
+      "args": [
+        "paste",
+        "--type",
+        "text",
+        "--auto-extension",
+        "--output",
+        "~/Documents/Notes",
+        "--filename",
+        "note"
+      ]
+    },
+    {
+      "id": "status",
+      "label": "Status",
+      "args": [
+        "status"
+      ]
+    },
+    {
+      "id": "ai-summarize-copyback",
+      "label": "AI: summarize clipboard \u2192 copy back",
+      "args": [
+        "ai",
+        "summarize",
+        "--copy"
+      ]
+    }
+  ]
+}

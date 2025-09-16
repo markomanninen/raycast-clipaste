@@ -1,0 +1,72 @@
+{
+  "name": "clipaste-launcher",
+  "title": "Clipaste Launcher",
+  "description": "Keyboard-first Raycast extension to run clipaste with a form, recipes, and clipboard preview/history.",
+  "icon": "icon.png",
+  "author": "markomanninen",
+  "categories": [
+    "Productivity",
+    "Developer Tools"
+  ],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "launcher",
+      "title": "Clipaste Launcher",
+      "description": "Run clipaste with arguments from a single form.",
+      "mode": "view",
+      "keywords": [
+        "clipboard",
+        "paste",
+        "copy",
+        "clipaste"
+      ],
+      "icon": "icon.png"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "clipastePath",
+      "title": "clipaste binary",
+      "description": "Path to the clipaste executable (or just 'clipaste' if it's on PATH).",
+      "type": "textfield",
+      "required": true,
+      "default": "clipaste"
+    },
+    {
+      "name": "defaultOutputDir",
+      "title": "Default Output Directory",
+      "description": "Used when 'Paste' has empty Output dir.",
+      "type": "directory",
+      "required": false
+    },
+    {
+      "name": "enablePngpaste",
+      "title": "Enable pngpaste fallback (macOS)",
+      "description": "If clipboard contains an image (not a file), try to dump it via pngpaste for preview.",
+      "type": "checkbox",
+      "required": false,
+      "default": false
+    },
+    {
+      "name": "pngpastePath",
+      "title": "pngpaste binary",
+      "description": "Path to pngpaste (e.g., 'pngpaste'). Install with: brew install pngpaste",
+      "type": "textfield",
+      "required": false,
+      "default": "pngpaste"
+    }
+  ],
+  "scripts": {
+    "dev": "ray dev",
+    "build": "ray build",
+    "lint": "eslint . --ext .ts,.tsx || true"
+  },
+  "dependencies": {
+    "@raycast/api": "^1.77.0",
+    "@raycast/utils": "^1.19.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}
