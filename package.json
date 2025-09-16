@@ -59,7 +59,11 @@
   "scripts": {
     "dev": "ray dev",
     "build": "ray build",
-    "lint": "eslint . --ext .ts,.tsx || true"
+    "lint": "eslint . --ext .ts,.tsx || true",
+    "install-deps": "./install.sh",
+    "setup": "npm install && npm run build",
+    "publish": "ray publish",
+    "package": "./package.sh"
   },
   "dependencies": {
     "@raycast/api": "^1.77.0",

@@ -15,6 +15,36 @@ import { useExec, useLocalStorage, usePromise } from "@raycast/utils";
 import { useEffect, useMemo } from "react";
 import recipes from "../assets/clipaste-recipes.json";
 
+// Dependency checker
+async function checkDependencies(clipastePath: string): Promise<{ isValid: boolean; error?: string }> {
+  try {
+    const response = await fetch(`data:text/plain,checking clipaste at ${clipastePath}`);
+    
+    // Simple path validation
+    if (!clipastePath || clipastePath.trim() === '') {
+      return {
+        isValid: false,
+        error: "❌ Clipaste path is not configured.\n\nPlease set the 'clipaste binary' path in Raycast extension preferences.\n\nCommon paths:\n• ~/bin/clipaste\n• /usr/local/bin/clipaste\n• /opt/homebrew/bin/clipaste"
+      };
+    }
+
+    // Check if it looks like a valid executable path
+    if (clipastePath !== 'clipaste' && !clipastePath.includes('/')) {
+      return {
+        isValid: false,
+        error: "❌ Invalid clipaste path format.\n\nPlease use either 'clipaste' (if on PATH) or a full path like:\n• ~/bin/clipaste\n• /usr/local/bin/clipaste"
+      };
+    }
+
+    return { isValid: true };
+  } catch (error) {
+    return {
+      isValid: false,
+      error: `❌ Failed to validate dependencies: ${String(error)}`
+    };
+  }
+}
+
 type Mode = "copy" | "get" | "paste" | "status" | "clear" | "ai" | "random";
 
 type FormValues = {
@@ -157,17 +187,27 @@ export default function Command() {
   const previewCmd = useMemo(() => `$ ${cli} ${previewArgs.map(shellQuote).join(" ")}`, [previewArgs, cli]);
 
   function onSubmit(v: FormValues) {
-    // Ensure we always have a valid output directory for paste operations
-    let out = v.output?.trim()?.length ? v.output : prefs.defaultOutputDir || "";
-    
-    // If still empty and this is a paste operation, use Desktop as fallback
-    if (!out && v.mode === "paste") {
-      out = "~/Desktop";
-    }
-    
-    const merged = { ...v, output: out };
-    const args = buildArgs(merged);
-    push(<ResultView cli={cli} args={args} />);
+    // Check dependencies before proceeding
+    checkDependencies(cli).then(({ isValid, error }) => {
+      if (!isValid && error) {
+        void showToast(Toast.Style.Failure, "Dependency Error", error);
+        return;
+      }
+      
+      // Ensure we always have a valid output directory for paste operations
+      let out = v.output?.trim()?.length ? v.output : prefs.defaultOutputDir || "";
+      
+      // If still empty and this is a paste operation, use Desktop as fallback
+      if (!out && v.mode === "paste") {
+        out = "~/Desktop";
+      }
+      
+      const merged = { ...v, output: out };
+      const args = buildArgs(merged);
+      push(<ResultView cli={cli} args={args} />);
+    }).catch((err) => {
+      void showToast(Toast.Style.Failure, "Validation Error", `Failed to check dependencies: ${String(err)}`);
+    });
   }
 
   const clipPreview = useMemo(() => {
