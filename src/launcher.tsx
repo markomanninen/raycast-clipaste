@@ -15,7 +15,7 @@ import { useExec, useLocalStorage, usePromise } from "@raycast/utils";
 import { useEffect, useMemo } from "react";
 import recipes from "../assets/clipaste-recipes.json";
 
-type Mode = "copy" | "get" | "paste" | "status" | "clear" | "ai";
+type Mode = "copy" | "get" | "paste" | "status" | "clear" | "ai" | "random";
 
 type FormValues = {
   mode: Mode;
@@ -35,6 +35,16 @@ type FormValues = {
   templateArgs?: string;
   recipeId?: string;
   clipOffset?: number;
+  // Random generator fields
+  randomType?: "password" | "string" | "personal-id" | "iban" | "business-id";
+  randomLength?: string;
+  randomTemplate?: string;
+  randomShowMeta?: boolean;
+  randomFormat?: "default" | "spaced" | "json";
+  randomCharsets?: string;
+  randomWords?: boolean;
+  randomGender?: "male" | "female" | "any";
+  randomAge?: string;
 };
 
 type Prefs = {
@@ -86,6 +96,31 @@ function buildArgs(values: FormValues): string[] {
       args.push(act);
       if (act === "classify" && values.aiLabels) args.push("--labels", values.aiLabels);
       if (act === "transform" && values.aiInstruction) args.push("--instruction", values.aiInstruction);
+      break;
+    case "random":
+      args.push("random");
+      const randomType = values.randomType ?? "password";
+      args.push(randomType);
+      
+      // Common options
+      if (values.randomLength?.trim()) args.push("--length", values.randomLength);
+      if (values.randomShowMeta) args.push("--show-meta");
+      
+      // Type-specific options
+      if (randomType === "password") {
+        if (values.randomWords) args.push("--words");
+        if (values.randomCharsets?.trim()) args.push("--charsets", values.randomCharsets);
+      } else if (randomType === "string") {
+        if (values.randomTemplate?.trim()) args.push("--template", values.randomTemplate);
+      } else if (randomType === "personal-id") {
+        if (values.randomGender && values.randomGender !== "any") args.push("--gender", values.randomGender);
+        if (values.randomAge?.trim()) args.push("--age", values.randomAge);
+      } else if (randomType === "iban" || randomType === "business-id") {
+        if (values.randomFormat && values.randomFormat !== "default") {
+          if (values.randomFormat === "spaced") args.push("--format", "spaced");
+          else if (values.randomFormat === "json") args.push("--output", "json");
+        }
+      }
       break;
   }
 
@@ -170,6 +205,7 @@ export default function Command() {
         <Form.Dropdown.Item title="status" value="status" />
         <Form.Dropdown.Item title="clear" value="clear" />
         <Form.Dropdown.Item title="ai (optional)" value="ai" />
+        <Form.Dropdown.Item title="random" value="random" />
       </Form.Dropdown>
 
       <Form.Separator />
@@ -232,6 +268,50 @@ export default function Command() {
         <Form.TextArea id="aiInstruction" title="Instruction (transform)" value={values.aiInstruction ?? ""} onChange={(v) => update({ aiInstruction: v })} />
       </>)}
 
+      {values.mode === "random" && (<>
+        <Form.Dropdown id="randomType" title="Generator Type" value={values.randomType ?? "password"} onChange={(v) => update({ randomType: v as any })}>
+          <Form.Dropdown.Item title="password" value="password" />
+          <Form.Dropdown.Item title="string (template)" value="string" />
+          <Form.Dropdown.Item title="personal-id (Finnish)" value="personal-id" />
+          <Form.Dropdown.Item title="iban (Finnish)" value="iban" />
+          <Form.Dropdown.Item title="business-id (Finnish)" value="business-id" />
+        </Form.Dropdown>
+        
+        {/* Common fields */}
+        <Form.TextField id="randomLength" title="Length" placeholder="e.g., 12, 24" value={values.randomLength ?? ""} onChange={(v) => update({ randomLength: v })} />
+        <Form.Checkbox id="randomShowMeta" label="Show metadata" value={values.randomShowMeta ?? false} onChange={(v) => update({ randomShowMeta: v })} />
+        
+        {/* Password-specific fields */}
+        {values.randomType === "password" && (<>
+          <Form.Checkbox id="randomWords" label="Use diceware words" value={values.randomWords ?? false} onChange={(v) => update({ randomWords: v })} />
+          <Form.TextField id="randomCharsets" title="Character sets" placeholder="e.g., upper,lower,digits" value={values.randomCharsets ?? ""} onChange={(v) => update({ randomCharsets: v })} />
+        </>)}
+        
+        {/* String template fields */}
+        {values.randomType === "string" && (
+          <Form.TextField id="randomTemplate" title="Template" placeholder="e.g., XXXX-XXXX-XXXX" value={values.randomTemplate ?? ""} onChange={(v) => update({ randomTemplate: v })} />
+        )}
+        
+        {/* Personal ID fields */}
+        {values.randomType === "personal-id" && (<>
+          <Form.Dropdown id="randomGender" title="Gender" value={values.randomGender ?? "any"} onChange={(v) => update({ randomGender: v as any })}>
+            <Form.Dropdown.Item title="any" value="any" />
+            <Form.Dropdown.Item title="male" value="male" />
+            <Form.Dropdown.Item title="female" value="female" />
+          </Form.Dropdown>
+          <Form.TextField id="randomAge" title="Age" placeholder="e.g., 25, 18-65" value={values.randomAge ?? ""} onChange={(v) => update({ randomAge: v })} />
+        </>)}
+        
+        {/* IBAN/Business ID format fields */}
+        {(values.randomType === "iban" || values.randomType === "business-id") && (
+          <Form.Dropdown id="randomFormat" title="Output Format" value={values.randomFormat ?? "default"} onChange={(v) => update({ randomFormat: v as any })}>
+            <Form.Dropdown.Item title="default" value="default" />
+            <Form.Dropdown.Item title="spaced" value="spaced" />
+            <Form.Dropdown.Item title="json" value="json" />
+          </Form.Dropdown>
+        )}
+      </>)}
+
       <Form.Separator />
       <Form.Description title="Command Preview" text={previewCmd} />
     </Form>
@@ -245,7 +325,7 @@ function ResultView(props: { cli: string; args: string[] }) {
   const { isLoading, data, error, revalidate } = useExec(cli, args, {
     shell: true,
     onError: (e) => { void showToast(Toast.Style.Failure, "Clipaste error", String(e)); },
-    onData: () => showHUD("✅ Done"),
+    onData: () => { void showToast(Toast.Style.Success, "Clipaste", "Command completed successfully"); },
   });
 
   useEffect(() => { if (error) showToast(Toast.Style.Failure, "Clipaste error", String(error)); }, [error]);
