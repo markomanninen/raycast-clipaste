@@ -3,12 +3,14 @@
 # Install the Raycast extension for development
 echo "Installing Clipaste Raycast extension for development..."
 
-# Build the extension
-npm run build
+# Install dependencies
+echo "Installing dependencies..."
+npm install
 
-# Open in Raycast for development
-echo "Opening in Raycast for development..."
-echo "The extension should appear in Raycast's extension list."
+# Run in development mode (this will register the extension with Raycast)
+echo "Starting development mode..."
+echo "This will register the extension with Raycast and watch for changes."
+npm run dev
 echo ""
 echo "If you encounter the 'read-only file system' error again, make sure to:"
 echo "1. Set a 'Default Output Directory' in the extension preferences"
