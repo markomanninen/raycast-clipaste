@@ -5,8 +5,7 @@
   "icon": "icon.png",
   "author": "markomanninen",
   "categories": [
-    "Productivity",
-    "Developer Tools"
+    "Other"
   ],
   "license": "MIT",
   "commands": [

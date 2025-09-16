@@ -112,10 +112,10 @@ export default function Command() {
   }
 
   // Clipboard preview via Raycast Clipboard API (supports offset 0..5)
-  const { data: clip, isLoading: clipLoading, revalidate: refreshClip } = usePromise(async () => {
-    const off = values.clipOffset ?? 0;
-    return await Clipboard.read({ offset: off });
-  }, [values.clipOffset]);
+  const { data: clip, isLoading: clipLoading, revalidate: refreshClip } = usePromise(
+    async (offset: number) => Clipboard.read({ offset }),
+    [values.clipOffset ?? 0]
+  );
 
   const cli = prefs.clipastePath || "clipaste";
   const previewArgs = useMemo(() => buildArgs(values), [values]);
@@ -244,15 +244,28 @@ function ResultView(props: { cli: string; args: string[] }) {
 
   const { isLoading, data, error, revalidate } = useExec(cli, args, {
     shell: true,
-    onError: (e) => showToast(Toast.Style.Failure, "Clipaste error", String(e)),
+    onError: (e) => { void showToast(Toast.Style.Failure, "Clipaste error", String(e)); },
     onData: () => showHUD("✅ Done"),
   });
 
   useEffect(() => { if (error) showToast(Toast.Style.Failure, "Clipaste error", String(error)); }, [error]);
 
-  const md = [
+  // Normalize exec output to string (handles string or Buffer safely)
+    let outputStr = "";
+    if (typeof data === "string") {
+      outputStr = data;
+    } else if (data) {
+      try {
+        // data may be a Buffer; use toString if available
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        outputStr = (data as any).toString("utf8");
+      } catch {
+        outputStr = "";
+      }
+    }
+    const md = [
     `# ${isLoading ? "Running clipaste…" : error ? "❌ Error" : "✅ Done"}`,
-    "", "```bash", cmdString, "```", "", "## Output", "", "```", ((data ?? "").trim() || "(no output)"), "```",
+    "", "```bash", cmdString, "```", "", "## Output", "", "```", (outputStr.trim() || "(no output)"), "```",
     error ? `\n> Error: \`${String(error)}\`` : "",
   ].join("\n");
 
@@ -284,7 +297,7 @@ function ClipboardPreviewDetail(props: { clip?: { text?: string; file?: string; 
 
 function PngpastePreviewDetail(props: { pngpastePath: string }) {
   const bin = props.pngpastePath || "pngpaste";
-  const cmd = `bash -lc 'if ! command -v "${bin}" >/dev/null 2>&1; then echo "__NOPNGPASTE__"; exit 127; fi; TMP="$(mktemp -t clipaste-preview)"; OUT="${TMP}.png"; if "${bin}" "${OUT}"; then echo "${OUT}"; else echo "__ERROR__"; fi'`;
+  const cmd = `bash -lc 'if ! command -v "${bin}" >/dev/null 2>&1; then echo "__NOPNGPASTE__"; exit 127; fi; TMP="$(mktemp -t clipaste-preview)"; OUT="\${TMP}.png"; if "${bin}" "\${OUT}"; then echo "\${OUT}"; else echo "__ERROR__"; fi'`;
   const { isLoading, data, error, revalidate } = useExec(cmd, [], { shell: true });
 
   let md = `# pngpaste Preview\n`;
