@@ -6,6 +6,7 @@ Features:
 - **Recipes** dropdown from `assets/clipaste-recipes.json` (no hardcoding).
 - **Clipboard Preview** + **History offset (0–5)** using Raycast Clipboard API.
 - Optional **pngpaste** fallback (macOS) that dumps a clipboard image to a temp file for inline preview.
+- **Automatic output directory handling** - defaults to `~/Desktop` when no output directory is specified to prevent "read-only file system" errors.
 
 ## Install & Run
 

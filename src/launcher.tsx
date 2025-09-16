@@ -64,7 +64,9 @@ function buildArgs(values: FormValues): string[] {
       break;
     case "paste":
       args.push("paste");
-      if (values.output?.trim()?.length) args.push("--output", values.output);
+      // Always include output directory for paste operations
+      const outputDir = values.output?.trim()?.length ? values.output : "~/Desktop";
+      args.push("--output", outputDir);
       if (values.filename?.trim()?.length) args.push("--filename", values.filename);
       if (values.type && values.type !== "auto") args.push("--type", values.type);
       if (values.format) args.push("--format", values.format);
@@ -120,7 +122,14 @@ export default function Command() {
   const previewCmd = useMemo(() => `$ ${cli} ${previewArgs.map(shellQuote).join(" ")}`, [previewArgs, cli]);
 
   function onSubmit(v: FormValues) {
-    const out = v.output?.trim()?.length ? v.output : prefs.defaultOutputDir || "";
+    // Ensure we always have a valid output directory for paste operations
+    let out = v.output?.trim()?.length ? v.output : prefs.defaultOutputDir || "";
+    
+    // If still empty and this is a paste operation, use Desktop as fallback
+    if (!out && v.mode === "paste") {
+      out = "~/Desktop";
+    }
+    
     const merged = { ...v, output: out };
     const args = buildArgs(merged);
     push(<ResultView cli={cli} args={args} />);
@@ -194,7 +203,7 @@ export default function Command() {
       )}
 
       {values.mode === "paste" && (<>
-        <Form.TextField id="output" title="Output Directory" placeholder="Leave blank to use Preference" value={values.output ?? ""} onChange={(v) => update({ output: v })} />
+        <Form.TextField id="output" title="Output Directory" placeholder="Default: Desktop (~/Desktop)" value={values.output ?? ""} onChange={(v) => update({ output: v })} />
         <Form.TextField id="filename" title="Filename (no extension if auto)" value={values.filename ?? ""} onChange={(v) => update({ filename: v })} />
         <Form.Dropdown id="type" title="Type (force)" value={values.type ?? "auto"} onChange={(v) => update({ type: v as any })}>
           <Form.Dropdown.Item title="auto" value="auto" />
