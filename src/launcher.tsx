@@ -6,7 +6,6 @@ import {
   Form,
   Toast,
   getPreferenceValues,
-  showHUD,
   showToast,
   useNavigation,
   Clipboard,
@@ -15,10 +14,25 @@ import { useExec, useLocalStorage, usePromise } from "@raycast/utils";
 import { useEffect, useMemo, useRef } from "react";
 import recipes from "../assets/clipaste-recipes.json";
 
+type RecipeDefinition = {
+  id: string;
+  label: string;
+  args: string[];
+};
+
+type RecipeFile = {
+  version: number;
+  recipes: RecipeDefinition[];
+};
+
+type BufferLike = {
+  toString: (encoding?: string) => string;
+};
+
 // Dependency checker
 async function checkDependencies(clipastePath: string): Promise<{ isValid: boolean; error?: string }> {
   try {
-    const response = await fetch(`data:text/plain,checking clipaste at ${clipastePath}`);
+    await fetch(`data:text/plain,checking clipaste at ${clipastePath}`);
     
     // Simple path validation
     if (!clipastePath || clipastePath.trim() === '') {
@@ -84,12 +98,15 @@ type Prefs = {
   pngpastePath?: string;
 };
 
+const DEFAULT_FORM_VALUES: FormValues = { mode: "paste", type: "auto", clipOffset: 0 };
+const RECIPES: RecipeFile = recipes as RecipeFile;
+
 function buildArgs(values: FormValues): string[] {
   const args: string[] = [];
 
   if (values.recipeId) {
-    const match = (recipes as any).recipes.find((r: any) => r.id === values.recipeId);
-    if (match) args.push(...(match.args as string[]));
+    const match = RECIPES.recipes.find((r) => r.id === values.recipeId);
+    if (match) args.push(...match.args);
   }
 
   switch (values.mode) {
@@ -102,7 +119,7 @@ function buildArgs(values: FormValues): string[] {
       args.push("get");
       if (values.raw) args.push("--raw");
       break;
-    case "paste":
+    case "paste": {
       args.push("paste");
       // Always include output directory for paste operations
       const outputDir = values.output?.trim()?.length ? values.output : "~/Desktop";
@@ -114,20 +131,22 @@ function buildArgs(values: FormValues): string[] {
       if (values.autoExtension) args.push("--auto-extension");
       if (values.dryRun) args.push("--dry-run");
       break;
+    }
     case "status":
       args.push("status");
       break;
     case "clear":
       args.push("clear", "--confirm");
       break;
-    case "ai":
+    case "ai": {
       args.push("ai");
       const act = values.aiAction ?? "summarize";
       args.push(act);
       if (act === "classify" && values.aiLabels) args.push("--labels", values.aiLabels);
       if (act === "transform" && values.aiInstruction) args.push("--instruction", values.aiInstruction);
       break;
-    case "random":
+    }
+    case "random": {
       args.push("random");
       const randomType = values.randomType ?? "password";
       args.push(randomType);
@@ -152,6 +171,7 @@ function buildArgs(values: FormValues): string[] {
         }
       }
       break;
+    }
   }
 
   if (values.templateArgs?.trim()) {
@@ -167,9 +187,9 @@ export default function Command() {
   const { push } = useNavigation();
 
   const { value: stored, setValue: setStored } =
-    useLocalStorage<FormValues>("clipaste.form", { mode: "paste", type: "auto", clipOffset: 0 });
+    useLocalStorage<FormValues>("clipaste.form", DEFAULT_FORM_VALUES);
 
-  const values: FormValues = stored ?? { mode: "paste", type: "auto", clipOffset: 0 };
+  const values = useMemo<FormValues>(() => stored ?? DEFAULT_FORM_VALUES, [stored]);
 
   function update(patch: Partial<FormValues>) {
     const next: FormValues = { ...values, ...patch };
@@ -273,7 +293,7 @@ export default function Command() {
       <Form.Description title="Recipe (optional)" text="Pick a saved recipe or leave empty." />
       <Form.Dropdown id="recipeId" title="Recipe" value={values.recipeId ?? ""} onChange={(v) => update({ recipeId: v || undefined })}>
         <Form.Dropdown.Item title="— none —" value="" />
-        {(recipes as any).recipes.map((r: any) => <Form.Dropdown.Item key={r.id} title={r.label} value={r.id} />)}
+        {RECIPES.recipes.map((r) => <Form.Dropdown.Item key={r.id} title={r.label} value={r.id} />)}
       </Form.Dropdown>
       <Form.TextField id="templateArgs" title="Extra Args (free text)" placeholder='e.g. --auto-extension --filename "screenshot"' value={values.templateArgs ?? ""} onChange={(v) => update({ templateArgs: v })} />
 
@@ -289,13 +309,13 @@ export default function Command() {
       {values.mode === "paste" && (<>
         <Form.TextField id="output" title="Output Directory" placeholder="Default: Desktop (~/Desktop)" value={values.output ?? ""} onChange={(v) => update({ output: v })} />
         <Form.TextField id="filename" title="Filename (no extension if auto)" value={values.filename ?? ""} onChange={(v) => update({ filename: v })} />
-        <Form.Dropdown id="type" title="Type (force)" value={values.type ?? "auto"} onChange={(v) => update({ type: v as any })}>
+        <Form.Dropdown id="type" title="Type (force)" value={values.type ?? "auto"} onChange={(v) => update({ type: v as FormValues["type"] })}>
           <Form.Dropdown.Item title="auto" value="auto" />
           <Form.Dropdown.Item title="text" value="text" />
           <Form.Dropdown.Item title="image" value="image" />
           <Form.Dropdown.Item title="binary" value="binary" />
         </Form.Dropdown>
-        <Form.Dropdown id="format" title="Image Format" value={values.format ?? ""} onChange={(v) => update({ format: (v as any) })}>
+        <Form.Dropdown id="format" title="Image Format" value={values.format ?? ""} onChange={(v) => update({ format: v as FormValues["format"] })}>
           <Form.Dropdown.Item title="(none)" value="" />
           <Form.Dropdown.Item title="png" value="png" />
           <Form.Dropdown.Item title="jpeg" value="jpeg" />
@@ -307,7 +327,7 @@ export default function Command() {
       </>)}
 
       {values.mode === "ai" && (<>
-        <Form.Dropdown id="aiAction" title="AI Action" value={values.aiAction ?? "summarize"} onChange={(v) => update({ aiAction: v as any })}>
+        <Form.Dropdown id="aiAction" title="AI Action" value={values.aiAction ?? "summarize"} onChange={(v) => update({ aiAction: v as FormValues["aiAction"] })}>
           <Form.Dropdown.Item title="summarize" value="summarize" />
           <Form.Dropdown.Item title="classify" value="classify" />
           <Form.Dropdown.Item title="transform" value="transform" />
@@ -317,7 +337,7 @@ export default function Command() {
       </>)}
 
       {values.mode === "random" && (<>
-        <Form.Dropdown id="randomType" title="Generator Type" value={values.randomType ?? "password"} onChange={(v) => update({ randomType: v as any })}>
+        <Form.Dropdown id="randomType" title="Generator Type" value={values.randomType ?? "password"} onChange={(v) => update({ randomType: v as FormValues["randomType"] })}>
           <Form.Dropdown.Item title="password" value="password" />
           <Form.Dropdown.Item title="string (template)" value="string" />
           <Form.Dropdown.Item title="personal-id (Finnish)" value="personal-id" />
@@ -342,7 +362,7 @@ export default function Command() {
         
         {/* Personal ID fields */}
         {values.randomType === "personal-id" && (<>
-          <Form.Dropdown id="randomGender" title="Gender" value={values.randomGender ?? "any"} onChange={(v) => update({ randomGender: v as any })}>
+          <Form.Dropdown id="randomGender" title="Gender" value={values.randomGender ?? "any"} onChange={(v) => update({ randomGender: v as FormValues["randomGender"] })}>
             <Form.Dropdown.Item title="any" value="any" />
             <Form.Dropdown.Item title="male" value="male" />
             <Form.Dropdown.Item title="female" value="female" />
@@ -352,7 +372,7 @@ export default function Command() {
         
         {/* IBAN/Business ID format fields */}
         {(values.randomType === "iban" || values.randomType === "business-id") && (
-          <Form.Dropdown id="randomFormat" title="Output Format" value={values.randomFormat ?? "default"} onChange={(v) => update({ randomFormat: v as any })}>
+          <Form.Dropdown id="randomFormat" title="Output Format" value={values.randomFormat ?? "default"} onChange={(v) => update({ randomFormat: v as FormValues["randomFormat"] })}>
             <Form.Dropdown.Item title="default" value="default" />
             <Form.Dropdown.Item title="spaced" value="spaced" />
             <Form.Dropdown.Item title="json" value="json" />
@@ -403,9 +423,16 @@ function ResultView(props: { cli: string; args: string[] }) {
       outputStr = data;
     } else {
       try {
-        // data may be a Buffer; use toString if available
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        outputStr = (data as any).toString("utf8");
+        if (typeof data === "object" && data !== null) {
+          const maybeBuffer = data as Partial<BufferLike>;
+          if (typeof maybeBuffer.toString === "function") {
+            outputStr = maybeBuffer.toString("utf8");
+          } else {
+            outputStr = String(data);
+          }
+        } else {
+          outputStr = String(data);
+        }
       } catch {
         outputStr = "";
       }
@@ -480,7 +507,7 @@ function PngpastePreviewDetail(props: { pngpastePath: string }) {
 }
 
 function shellQuote(s: string): string {
-  if (/^[a-zA-Z0-9_\/\.\-]+$/.test(s)) return s;
+  if (/^[a-zA-Z0-9_/.-]+$/.test(s)) return s;
   return '"' + s.replace(/"/g, '\\"') + '"';
 }
 
