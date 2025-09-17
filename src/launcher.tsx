@@ -12,7 +12,7 @@ import {
   Clipboard,
 } from "@raycast/api";
 import { useExec, useLocalStorage, usePromise } from "@raycast/utils";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import recipes from "../assets/clipaste-recipes.json";
 
 // Dependency checker
@@ -229,8 +229,16 @@ export default function Command() {
         <ActionPanel>
           <Action.SubmitForm title="Run clipaste" onSubmit={onSubmit} />
           <Action.CopyToClipboard title="Copy Command" content={previewCmd} />
-          <Action title="Refresh Clipboard Preview" onAction={() => refreshClip()} />
-          <Action.Push title="Open Clipboard Preview" target={<ClipboardPreviewDetail clip={clip} onRefresh={() => refreshClip()} />} />
+          <Action
+            title="Refresh Clipboard Preview"
+            shortcut={{ modifiers: ["opt"], key: "r" }}
+            onAction={() => { void refreshClip(); }}
+          />
+          <Action.Push
+            title="Open Clipboard Preview"
+            shortcut={{ modifiers: ["opt"], key: "o" }}
+            target={<ClipboardPreviewDetail clip={clip} onRefresh={() => { void refreshClip(); }} />}
+          />
           {prefs.enablePngpaste ? (
             <Action.Push title="Generate PNG Preview (pngpaste)" target={<PngpastePreviewDetail pngpastePath={prefs.pngpastePath || "pngpaste"} />} />
           ) : null}
@@ -250,7 +258,7 @@ export default function Command() {
 
       <Form.Separator />
 
-      <Form.Description title="Clipboard Preview" text={clipLoading ? "(loading…)" : clipPreview} />
+      <Form.Description title="Clipboard Preview (opt-r)" text={clipLoading ? "(loading…)" : clipPreview} />
       <Form.Dropdown id="clipOffset" title="Clipboard History Offset" value={String(values.clipOffset ?? 0)} onChange={(v) => update({ clipOffset: Number(v) })}>
         <Form.Dropdown.Item title="Current (0)" value="0" />
         <Form.Dropdown.Item title="Prev 1" value="1" />
@@ -361,20 +369,39 @@ export default function Command() {
 function ResultView(props: { cli: string; args: string[] }) {
   const { cli, args } = props;
   const cmdString = `$ ${cli} ${args.map(shellQuote).join(" ")}`;
+  const argsKey = useMemo(() => args.join("\u0000"), [args]);
+  const successToastShown = useRef(false);
+  const errorToastShown = useRef(false);
+
+  useEffect(() => {
+    successToastShown.current = false;
+    errorToastShown.current = false;
+  }, [cli, argsKey]);
 
   const { isLoading, data, error, revalidate } = useExec(cli, args, {
     shell: true,
-    onError: (e) => { void showToast(Toast.Style.Failure, "Clipaste error", String(e)); },
-    onData: () => { void showToast(Toast.Style.Success, "Clipaste", "Command completed successfully"); },
+    timeout: 5 * 60 * 1000,
   });
 
-  useEffect(() => { if (error) showToast(Toast.Style.Failure, "Clipaste error", String(error)); }, [error]);
+  useEffect(() => {
+    if (!isLoading && !error && !successToastShown.current) {
+      successToastShown.current = true;
+      void showToast(Toast.Style.Success, "Clipaste", "Command completed successfully");
+    }
+  }, [isLoading, error]);
 
-  // Normalize exec output to string (handles string or Buffer safely)
-    let outputStr = "";
+  useEffect(() => {
+    if (!isLoading && error && !errorToastShown.current) {
+      errorToastShown.current = true;
+      void showToast(Toast.Style.Failure, "Clipaste error", formatError(error));
+    }
+  }, [isLoading, error]);
+
+  let outputStr = "";
+  if (!isLoading && data) {
     if (typeof data === "string") {
       outputStr = data;
-    } else if (data) {
+    } else {
       try {
         // data may be a Buffer; use toString if available
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -383,11 +410,31 @@ function ResultView(props: { cli: string; args: string[] }) {
         outputStr = "";
       }
     }
-    const md = [
-    `# ${isLoading ? "Running clipaste…" : error ? "❌ Error" : "✅ Done"}`,
-    "", "```bash", cmdString, "```", "", "## Output", "", "```", (outputStr.trim() || "(no output)"), "```",
-    error ? `\n> Error: \`${String(error)}\`` : "",
-  ].join("\n");
+  }
+
+  const hasError = !isLoading && Boolean(error);
+  const mdParts = [
+    `# ${isLoading ? "Running clipaste…" : hasError ? "❌ Error" : "✅ Done"}`,
+    "",
+    "```bash",
+    cmdString,
+    "```",
+    "",
+    "## Output",
+    "",
+  ];
+
+  if (isLoading) {
+    mdParts.push("```", "(waiting for output…)", "```");
+  } else {
+    mdParts.push("```", outputStr.trim() || "(no output)", "```");
+  }
+
+  if (hasError) {
+    mdParts.push("", `> Error: \`${formatError(error)}\``);
+  }
+
+  const md = mdParts.join("\n");
 
   return (
     <Detail
@@ -435,4 +482,15 @@ function PngpastePreviewDetail(props: { pngpastePath: string }) {
 function shellQuote(s: string): string {
   if (/^[a-zA-Z0-9_\/\.\-]+$/.test(s)) return s;
   return '"' + s.replace(/"/g, '\\"') + '"';
+}
+
+function formatError(error: unknown): string {
+  if (!error) return "";
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
 }
