@@ -68,8 +68,8 @@ If you prefer manual installation:
 3. **Set up extension:**
 
    ```bash
-   git clone <this-repo>
-   cd clipaste-raycast-full
+   git clone https://github.com/markomanninen/raycast-clipaste.git
+   cd raycast-clipaste
    npm install
    npm run build
    npm run dev  # This registers the extension with Raycast
