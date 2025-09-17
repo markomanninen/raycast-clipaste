@@ -27,6 +27,7 @@
   "preferences": [
     {
       "name": "clipastePath",
+      "label": "clipaste binary",
       "title": "clipaste binary",
       "description": "Path to the clipaste executable (or just 'clipaste' if it's on PATH).",
       "type": "textfield",
@@ -35,6 +36,7 @@
     },
     {
       "name": "defaultOutputDir",
+      "label": "Default Output Directory",
       "title": "Default Output Directory",
       "description": "Used when 'Paste' has empty Output dir.",
       "type": "directory",
@@ -42,6 +44,7 @@
     },
     {
       "name": "enablePngpaste",
+      "label": "Enable pngpaste fallback (macOS)",
       "title": "Enable pngpaste fallback (macOS)",
       "description": "If clipboard contains an image (not a file), try to dump it via pngpaste for preview.",
       "type": "checkbox",
@@ -50,6 +53,7 @@
     },
     {
       "name": "pngpastePath",
+      "label": "pngpaste binary",
       "title": "pngpaste binary",
       "description": "Path to pngpaste (e.g., 'pngpaste'). Install with: brew install pngpaste",
       "type": "textfield",
@@ -76,6 +80,7 @@
     "eslint": "^8.57.1",
     "eslint-plugin-react": "^7.35.0",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.3.3",
     "typescript": "~5.3.3"
   }
 }
