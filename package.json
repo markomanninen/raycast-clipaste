@@ -1,6 +1,6 @@
 {
   "name": "clipaste-launcher",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "title": "Clipaste Launcher",
   "description": "Keyboard-first Raycast extension to run clipaste with a form, recipes, and clipboard preview/history.",
   "icon": "icon.png",
